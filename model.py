@@ -27,6 +27,9 @@ class ROPChain(BinaryDataNotification):
     def add_listener(self, listener):
         self.listeners.append(listener)
 
+    def address_at_index(self, index):
+        return self.segment.start + 5 * index
+
     def update_segment(self):
         self.bv.write(self.segment.start, self.get_assembly())
 
@@ -62,3 +65,46 @@ class ROPChain(BinaryDataNotification):
         asm += self.arch.assemble(f"ret", 0) * len(self.chain)
 
         return asm
+
+
+def format_addr(bv: BinaryView, addr):
+    disasm = disasm_at_addr(bv, addr)
+    if len(disasm) > 0:
+        return disasm
+
+    return f"{addr:x}".rjust(bv.arch.address_size * 2, '0')
+
+def disasm_at_addr(bv: BinaryView, addr):
+    if bv.start >= addr or addr > bv.end:
+        return ""
+
+    if not bv.get_segment_at(addr).executable:
+        return ""
+
+    stop_on = ['retn', 'int', 'syscall']
+
+    ops = []
+    done = False
+    while not done and len(ops) < 3:
+        data = bv.read(addr, bv.arch.max_instr_length)
+        text = bv.arch.get_instruction_text(data, addr)
+        info = bv.arch.get_instruction_info(data, addr)
+
+        if text is None:
+            return ""
+        tokens, length = text
+        if tokens is None:
+            return ""
+
+        if len(info.branches) > 0 and not tokens[0].text == "retn":
+            done = True
+        for search in stop_on:
+            if tokens[0].text == search:
+                done = True
+
+        line = ''.join(token.text for token in tokens)
+
+        ops.append(line)
+        addr += length
+
+    return re.sub(r'\s+', ' ', " ; ".join(ops))

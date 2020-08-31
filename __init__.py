@@ -38,7 +38,7 @@ def create_rop_cave(bv: BinaryView):
 
     chain = ROPChain(bv, bv.get_segment_at(segment_start), 50, bv.arch)
     chain.update_segment()
-    rop_widget = widget.get_dockwidget(bv, "ROPChain")
+    rop_widget = widget.get_dockwidget(bv, "ROP Chain")
     rop_widget.setState(chain)
 
     print(f"Code cave at {hex(segment_start)}")
@@ -51,7 +51,7 @@ def create_rop_cave(bv: BinaryView):
     bv.commit_undo_actions()
 
     # And open it!
-    bv.navigate(f"Graph:{bv.view_type}", segment_start)
+    bv.navigate(f"Graph:{bv.view_type}", segment_start + len(chain.get_assembly()) - 1)
 
 
 init_ui()

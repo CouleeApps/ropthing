@@ -8,20 +8,11 @@ class X86RopHook(ArchitectureHook):
     def __init__(self, base_arch):
         super(X86RopHook, self).__init__(base_arch)
 
-    # This function copied from the example :P
-    def get_instruction_text(self, data, addr):
-        # Call the original implementation's method by calling the superclass
-        result, length = super(X86RopHook, self).get_instruction_text(data, addr)
-
-        # Patch the name of the 'retn' instruction to 'ret'
-        if len(result) > 0 and result[0].text == 'retn':
-            result[0].text = 'ret'
-
-        return result, length
-
     def get_instruction_info(self, data, addr):
         # Call the original implementation's method by calling the superclass
         info = super(X86RopHook, self).get_instruction_info(data, addr)
+        if info is None:
+            return None
 
         # I think you have to do this to work around getters and setters
         branches = info.branches
