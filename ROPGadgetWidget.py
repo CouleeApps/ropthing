@@ -11,7 +11,8 @@ import re
 import binaryninjaui
 from binaryninjaui import DockContextHandler, UIActionHandler, FilterTarget, FilteredView, UIContext, ViewFrame, \
     UIAction
-from binaryninja import BinaryView, BackgroundTaskThread, execute_on_main_thread_and_wait, execute_on_main_thread
+from binaryninja import BinaryView, BackgroundTaskThread, execute_on_main_thread_and_wait, execute_on_main_thread, \
+    AnalysisState
 
 from .model import disasm_at_addr
 
@@ -43,8 +44,12 @@ class ROPGadgetListModel(QAbstractItemModel):
                 self.model = model
 
             def run(self):
-                self._run()
-                self.model.updating = False
+                time.sleep(1)
+                self.progress = "Finding Gadgets (Waiting for analysis...)"
+                if self.bv.analysis_info.state == AnalysisState.IdleState:
+                    self._run()
+                else:
+                    self.bv.add_analysis_completion_event(self._run)
 
             def _run(self):
                 rop_addrs = {}
@@ -116,6 +121,7 @@ class ROPGadgetListModel(QAbstractItemModel):
                 self.progress = f"Finding Gadgets (Finishing...)"
                 update_rows()
                 self.finish()
+                self.model.updating = False
 
         t = ROPGadgetListTask(self.bv, self)
         t.start()
@@ -203,7 +209,7 @@ class ROPGadgetListModel(QAbstractItemModel):
 
 
 class ROPGadgetItemDelegate(QItemDelegate):
-    def __init__(self, parent):
+    def __init__(self, parent, data):
         QItemDelegate.__init__(self, parent)
 
         self.font = binaryninjaui.getMonospaceFont(parent)
@@ -213,7 +219,7 @@ class ROPGadgetItemDelegate(QItemDelegate):
         self.char_height = QFontMetricsF(self.font).height()
         self.char_offset = binaryninjaui.getFontVerticalOffset()
 
-        self.expected_char_widths = [10, 64]
+        self.expected_char_widths = [data.arch.address_size * 2 + 2, 64]
 
     def sizeHint(self, option, idx):
         width = self.expected_char_widths[idx.column()]
@@ -312,7 +318,7 @@ class ROPGadgetWidget(QWidget, DockContextHandler):
         self.table.filter_view = self.filter_view
         self.table.setModel(self.model)
 
-        self.item_delegate = ROPGadgetItemDelegate(self)
+        self.item_delegate = ROPGadgetItemDelegate(self, data)
         self.table.setItemDelegate(self.item_delegate)
 
         for i in range(len(self.model.columns)):

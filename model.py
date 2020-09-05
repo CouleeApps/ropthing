@@ -28,7 +28,10 @@ class ROPChain(BinaryDataNotification):
         self.listeners.append(listener)
 
     def address_at_index(self, index):
-        return self.segment.start + 5 * index
+        if self.arch.address_size == 4:
+            return self.segment.start + 5 * index
+        else:
+            return self.segment.start + 11 * index
 
     def update_segment(self):
         self.bv.write(self.segment.start, self.get_assembly())
@@ -41,15 +44,12 @@ class ROPChain(BinaryDataNotification):
         gadgets = []
         il = func.low_level_il
         for inst in il.instructions:
-            if inst.operation != LowLevelILOperation.LLIL_PUSH:
+            if inst.operation == LowLevelILOperation.LLIL_JUMP:
                 break
-            op = inst.operands[0]
-            if op.operation == LowLevelILOperation.LLIL_CONST:
-                gadgets.append(op.value.value)
-            elif op.operation == LowLevelILOperation.LLIL_ZX:
-                gadgets.append(op.value.value)
-            else:
-                break
+            if inst.operation == LowLevelILOperation.LLIL_PUSH:
+                value = inst.operands[0].value
+                if value.type == RegisterValueType.ConstantValue:
+                    gadgets.append(value.value)
 
         self.chain = gadgets
 
@@ -59,8 +59,13 @@ class ROPChain(BinaryDataNotification):
     def get_assembly(self):
         asm = b""
 
-        for gadget in self.chain:
-            asm += self.arch.assemble(f"push 0x{gadget:0x}", 0).ljust(5, b'\x90')
+        if self.arch.address_size == 4:
+            for gadget in self.chain:
+                asm += self.arch.assemble(f"push 0x{gadget:0x}", 0).ljust(5, b'\x90')
+        else:
+            for gadget in self.chain:
+                asm += self.arch.assemble(f"mov rax, 0x{gadget:0x}", 0).ljust(10, b'\x90')
+                asm += self.arch.assemble(f"push rax", 0)
 
         asm += self.arch.assemble(f"ret", 0) * len(self.chain)
 
