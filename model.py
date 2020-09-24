@@ -83,7 +83,7 @@ def disasm_at_addr(bv: BinaryView, addr):
     if bv.start >= addr or addr > bv.end:
         return ""
 
-    if not bv.get_segment_at(addr).executable:
+    if bv.get_segment_at(addr) is None or not bv.get_segment_at(addr).executable:
         return ""
 
     stop_on = ['retn', 'int', 'syscall']

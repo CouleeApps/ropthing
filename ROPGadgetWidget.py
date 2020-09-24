@@ -27,7 +27,6 @@ class ROPGadgetListModel(QAbstractItemModel):
         self.last_filter = ""
         self.rows = []
         self.filtered_rows = []
-        self.update_rows()
         self.set_filter("")
 
     def update_rows(self):
@@ -46,10 +45,11 @@ class ROPGadgetListModel(QAbstractItemModel):
             def run(self):
                 time.sleep(1)
                 self.progress = "Finding Gadgets (Waiting for analysis...)"
-                if self.bv.analysis_info.state == AnalysisState.IdleState:
-                    self._run()
-                else:
-                    self.bv.add_analysis_completion_event(self._run)
+                if self.bv.analysis_info.state != AnalysisState.IdleState:
+                    event = threading.Event()
+                    self.bv.add_analysis_completion_event(lambda: event.set())
+                    event.wait()
+                self._run()
 
             def _run(self):
                 rop_addrs = {}
@@ -223,9 +223,6 @@ class ROPGadgetItemDelegate(QItemDelegate):
 
     def sizeHint(self, option, idx):
         width = self.expected_char_widths[idx.column()]
-        data = idx.data()
-        if data is not None:
-            width = max(width, len(data))
         return QSize(self.char_width * width + 4, self.char_height)
 
     def paint(self, painter, option, idx):
@@ -343,3 +340,5 @@ class ROPGadgetWidget(QWidget, DockContextHandler):
         else:
             return True
 
+    def load_gadgets(self):
+        self.model.update_rows()
