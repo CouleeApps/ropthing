@@ -28,7 +28,7 @@ class ROPChain(BinaryDataNotification):
         self.listeners.append(listener)
 
     def address_at_index(self, index):
-        if self.arch.address_size == 4:
+        if address_size(self) == 4:
             return self.segment.start + 5 * index
         else:
             return self.segment.start + 11 * index
@@ -59,7 +59,7 @@ class ROPChain(BinaryDataNotification):
     def get_assembly(self):
         asm = b""
 
-        if self.arch.address_size == 4:
+        if address_size(self) == 4:
             for gadget in self.chain:
                 asm += self.arch.assemble(f"push 0x{gadget:0x}", 0).ljust(5, b'\x90')
         else:
@@ -77,7 +77,8 @@ def format_addr(bv: BinaryView, addr):
     if len(disasm) > 0:
         return disasm
 
-    return f"{addr:x}".rjust(bv.arch.address_size * 2, '0')
+    return f"{addr:x}".rjust(address_size(bv) * 2, '0')
+
 
 def disasm_at_addr(bv: BinaryView, addr):
     if bv.start >= addr or addr > bv.end:
@@ -113,3 +114,7 @@ def disasm_at_addr(bv: BinaryView, addr):
         addr += length
 
     return re.sub(r'\s+', ' ', " ; ".join(ops))
+
+
+def address_size(bv: BinaryView):
+    return bv.arch.address_size if bv.arch is not None else 8

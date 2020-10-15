@@ -8,7 +8,7 @@ import binaryninjaui
 from binaryninjaui import DockContextHandler, UIActionHandler
 from binaryninja import BinaryView
 
-from .model import ROPChain, format_addr
+from .model import ROPChain, format_addr, address_size
 
 
 class ROPChainListModel(QAbstractItemModel):
@@ -84,7 +84,7 @@ class ROPChainListModel(QAbstractItemModel):
         if role == Qt.DisplayRole:
             # Format data into displayable text
             if self.columns[index.column()] == "Gadget":
-                text = ('%x' % conts).rjust(self.bv.arch.address_size * 2, "0")
+                text = ('%x' % conts).rjust(address_size(self.bv) * 2, "0")
             elif self.columns[index.column()] == "Offset":
                 offset = (len(self.state.chain) - conts - 1) * 4
                 text = ('%x' % offset)

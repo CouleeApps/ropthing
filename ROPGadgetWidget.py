@@ -14,7 +14,7 @@ from binaryninjaui import DockContextHandler, UIActionHandler, FilterTarget, Fil
 from binaryninja import BinaryView, BackgroundTaskThread, execute_on_main_thread_and_wait, execute_on_main_thread, \
     AnalysisState
 
-from .model import disasm_at_addr
+from .model import disasm_at_addr, address_size
 
 
 class ROPGadgetListModel(QAbstractItemModel):
@@ -196,13 +196,13 @@ class ROPGadgetListModel(QAbstractItemModel):
         if role == Qt.DisplayRole:
             # Format data into displayable text
             if self.columns[index.column()] == "Address":
-                text = ('%x' % conts).rjust(self.bv.arch.address_size * 2, "0")
+                text = ('%x' % conts).rjust(address_size(self.bv) * 2, "0")
             else:
                 text = str(conts)
             return text
         if role == Qt.UserRole:
             # Clipboard
-            return ('%x' % self.filtered_rows[index.row()][0]).rjust(self.bv.arch.address_size * 2, "0")
+            return ('%x' % self.filtered_rows[index.row()][0]).rjust(address_size(self.bv) * 2, "0")
 
 
         return None
@@ -219,7 +219,7 @@ class ROPGadgetItemDelegate(QItemDelegate):
         self.char_height = QFontMetricsF(self.font).height()
         self.char_offset = binaryninjaui.getFontVerticalOffset()
 
-        self.expected_char_widths = [data.arch.address_size * 2 + 2, 64]
+        self.expected_char_widths = [address_size(data) * 2 + 2, 64]
 
     def sizeHint(self, option, idx):
         width = self.expected_char_widths[idx.column()]
